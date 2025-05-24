@@ -1,5 +1,3 @@
-const ClientError = require('../../exceptions/ClientError');
-
 class NotesHandler {
   // eslint-disable-next-line lines-between-class-members
   #service; #validator;
@@ -10,40 +8,20 @@ class NotesHandler {
   }
 
   postNoteHandler = (request, h) => {
-    try {
-      this.#validator.validateNotePayload(request.payload);
-      const { title = 'untitled', tags, body } = request.payload;
+    this.#validator.validateNotePayload(request.payload);
+    const { title = 'untitled', tags, body } = request.payload;
+    const noteId = this.#service.addNote({ title, tags, body });
 
-      const noteId = this.#service.addNote({ title, tags, body });
-
-      // Create a response
-      const response = h.response({
-        status: 'success',
-        message: 'Catatan berhasil ditambahkan',
-        data: {
-          noteId,
-        },
-      });
-      response.code(201);
-      return response;
-    } catch (error) {
-      if (error instanceof ClientError) {
-        const response = h.response({
-          status: 'fail',
-          message: error.message,
-        });
-        response.code(error.statusCode);
-        return response;
-      }
-
-      const response = h.response({
-        status: 'error',
-        message: 'Maaf, terjadi kegagalan pada server kami.',
-      });
-      response.code(500);
-      console.error(error);
-      return response;
-    }
+    // Create a response
+    const response = h.response({
+      status: 'success',
+      message: 'Catatan berhasil ditambahkan',
+      data: {
+        noteId,
+      },
+    });
+    response.code(201);
+    return response;
   };
 
   getNotesHandler = () => {
@@ -58,99 +36,39 @@ class NotesHandler {
     };
   };
 
-  getNoteByIdHandler = (request, h) => {
-    try {
-      const { id } = request.params;
-      const note = this.#service.getNoteById(id);
+  getNoteByIdHandler = (request) => {
+    const { id } = request.params;
+    const note = this.#service.getNoteById(id);
 
-      return {
-        status: 'success',
-        data: {
-          note,
-        },
-      };
-    } catch (error) {
-      if (error instanceof ClientError) {
-        const response = h.response({
-          status: 'fail',
-          message: error.message,
-        });
-        response.code(error.statusCode);
-        return response;
-      }
-
-      // Server Error
-      const response = h.response({
-        status: 'error',
-        message: 'Maaf, terjadi kegagalan pada server kami.',
-      });
-      response.code(500);
-      console.error(error);
-      return response;
-    }
+    return {
+      status: 'success',
+      data: {
+        note,
+      },
+    };
   };
 
-  putNoteByIdHandler = (request, h) => {
-    try {
-      this.#validator.validateNotePayload(request.payload);
+  putNoteByIdHandler = (request) => {
+    this.#validator.validateNotePayload(request.payload);
+    const { id } = request.params;
 
-      const { id } = request.params;
-      this.#service.editNoteById(id, request.payload);
+    this.#service.editNoteById(id, request.payload);
 
-      return {
-        status: 'success',
-        message: 'Catatan berhasil diperbarui',
-      };
-    } catch (error) {
-      if (error instanceof ClientError) {
-        const response = h.response({
-          status: 'fail',
-          message: error.message,
-        });
-        response.code(error.statusCode);
-        return response;
-      }
-
-      // Server Error
-      const response = h.response({
-        status: 'error',
-        message: 'Maaf, terjadi kegagalan pada server kami.',
-      });
-      response.code(500);
-      console.error(error);
-      return response;
-    }
+    return {
+      status: 'success',
+      message: 'Catatan berhasil diperbarui',
+    };
   };
 
-  deleteNoteByIdHandler = (request, h) => {
-    try {
-      const { id } = request.params;
+  deleteNoteByIdHandler = (request) => {
+    const { id } = request.params;
 
-      this.#service.deleteNoteById(id);
+    this.#service.deleteNoteById(id);
 
-      return {
-        status: 'success',
-        message: 'Catatan berhasil dihapus',
-      };
-    } catch (error) {
-      if (error instanceof ClientError) {
-        const response = h.response({
-          status: 'fail',
-          message: error.message,
-        });
-        response.code(error.statusCode);
-        return response;
-      }
-
-      // Server Error
-      const response = h.response({
-        status: 'error',
-        message: 'Maaf, terjadi kegagalan pada server kami.',
-      });
-      response.code(500);
-      console.error(error);
-      return response;
-    }
+    return {
+      status: 'success',
+      message: 'Catatan berhasil dihapus',
+    };
   };
 }
 
