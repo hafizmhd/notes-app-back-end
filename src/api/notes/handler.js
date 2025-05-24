@@ -7,10 +7,11 @@ class NotesHandler {
     this.#validator = validator;
   }
 
-  postNoteHandler = (request, h) => {
+  postNoteHandler = async (request, h) => {
     this.#validator.validateNotePayload(request.payload);
     const { title = 'untitled', tags, body } = request.payload;
-    const noteId = this.#service.addNote({ title, tags, body });
+
+    const noteId = await this.#service.addNote({ title, tags, body });
 
     // Create a response
     const response = h.response({
@@ -24,8 +25,8 @@ class NotesHandler {
     return response;
   };
 
-  getNotesHandler = () => {
-    const notes = this.#service.getNotes();
+  getNotesHandler = async () => {
+    const notes = await this.#service.getNotes();
 
     // Tidak pakai h.response() karena tidak customisasi response code dsb.
     return {
@@ -36,9 +37,9 @@ class NotesHandler {
     };
   };
 
-  getNoteByIdHandler = (request) => {
+  getNoteByIdHandler = async (request) => {
     const { id } = request.params;
-    const note = this.#service.getNoteById(id);
+    const note = await this.#service.getNoteById(id);
 
     return {
       status: 'success',
@@ -48,11 +49,11 @@ class NotesHandler {
     };
   };
 
-  putNoteByIdHandler = (request) => {
+  putNoteByIdHandler = async (request) => {
     this.#validator.validateNotePayload(request.payload);
     const { id } = request.params;
 
-    this.#service.editNoteById(id, request.payload);
+    await this.#service.editNoteById(id, request.payload);
 
     return {
       status: 'success',
@@ -60,10 +61,10 @@ class NotesHandler {
     };
   };
 
-  deleteNoteByIdHandler = (request) => {
+  deleteNoteByIdHandler = async (request) => {
     const { id } = request.params;
 
-    this.#service.deleteNoteById(id);
+    await this.#service.deleteNoteById(id);
 
     return {
       status: 'success',
