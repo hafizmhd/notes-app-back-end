@@ -7,9 +7,9 @@
     "extends": "airbnb-base",
     "overrides": [
         {
-            "files": ["./src/api/notes/handler.js"],
+            "files": ["./src/api/**/handler.js"],
             "rules": {
-                "no-console": "off"
+                "lines-between-class-members": "off"
             }
         }
     ],
