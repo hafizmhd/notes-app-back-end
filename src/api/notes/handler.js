@@ -10,8 +10,11 @@ class NotesHandler {
   postNoteHandler = async (request, h) => {
     this.#validator.validateNotePayload(request.payload);
     const { title = 'untitled', tags, body } = request.payload;
+    const { id: credentialId } = request.auth.credentials;
 
-    const noteId = await this.#service.addNote({ title, tags, body });
+    const noteId = await this.#service.addNote({
+      title, tags, body, owner: credentialId,
+    });
 
     // Create a response
     const response = h.response({
@@ -25,8 +28,9 @@ class NotesHandler {
     return response;
   };
 
-  getNotesHandler = async () => {
-    const notes = await this.#service.getNotes();
+  getNotesHandler = async (request) => {
+    const { id: credentialId } = request.auth.credentials;
+    const notes = await this.#service.getNotes(credentialId);
 
     // Tidak pakai h.response() karena tidak customisasi response code dsb.
     return {
@@ -39,6 +43,9 @@ class NotesHandler {
 
   getNoteByIdHandler = async (request) => {
     const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this.#service.verifyNoteOwner(id, credentialId);
     const note = await this.#service.getNoteById(id);
 
     return {
@@ -52,7 +59,9 @@ class NotesHandler {
   putNoteByIdHandler = async (request) => {
     this.#validator.validateNotePayload(request.payload);
     const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
 
+    await this.#service.verifyNoteOwner(id, credentialId);
     await this.#service.editNoteById(id, request.payload);
 
     return {
@@ -63,7 +72,9 @@ class NotesHandler {
 
   deleteNoteByIdHandler = async (request) => {
     const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
 
+    await this.#service.verifyNoteOwner(id, credentialId);
     await this.#service.deleteNoteById(id);
 
     return {
