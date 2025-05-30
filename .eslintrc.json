@@ -11,6 +11,12 @@
             "rules": {
                 "lines-between-class-members": "off"
             }
+        },
+        {
+            "files": ["./src/services/**/*.js"],
+            "rules": {
+                "lines-between-class-members": "off"
+            }
         }
     ],
     "parserOptions": {

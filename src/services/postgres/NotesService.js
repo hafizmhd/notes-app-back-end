@@ -1,15 +1,16 @@
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
-const InvariantError = require('../../exceptions/InvariantError');
 const { mapDBToModel } = require('../../utils');
+const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class NotesService {
-  #pool;
+  #pool; #collaborationsService;
 
-  constructor() {
+  constructor(collaborationsService) {
     this.#pool = new Pool();
+    this.#collaborationsService = collaborationsService;
   }
 
   addNote = async ({
@@ -35,7 +36,10 @@ class NotesService {
 
   getNotes = async (owner) => {
     const query = {
-      text: 'SELECT * FROM notes WHERE owner = $1',
+      text: `SELECT notes.* FROM notes
+      LEFT JOIN collaborations ON collaborations.note_id = notes.id
+      WHERE notes.owner = $1 OR collaborations.user_id = $1
+      GROUP BY notes.id`,
       values: [owner],
     };
     const result = await this.#pool.query(query);
@@ -44,7 +48,10 @@ class NotesService {
 
   getNoteById = async (id) => {
     const query = {
-      text: 'SELECT * FROM notes WHERE id = $1',
+      text: `SELECT notes.*, users.username
+      FROM notes
+      LEFT JOIN users ON notes.owner=users.id
+      WHERE notes.id = $1`,
       values: [id],
     };
 
@@ -100,6 +107,21 @@ class NotesService {
 
     if (note.owner !== owner) {
       throw new AuthorizationError('Anda tidak berhak mengakses resource ini');
+    }
+  };
+
+  verifyNoteAccess = async (noteId, userId) => {
+    try {
+      await this.verifyNoteOwner(noteId, userId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      try {
+        await this.#collaborationsService.verifyCollaborator(noteId, userId);
+      } catch {
+        throw error;
+      }
     }
   };
 }

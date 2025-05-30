@@ -83,6 +83,17 @@ class UsersService {
 
     return id;
   };
+
+  getUsersByUsername = async (username) => {
+    const query = {
+      text: 'SELECT * FROM users WHERE username LIKE $1',
+      values: [`%${username}%`],
+    };
+
+    const result = await this.#pool.query(query);
+
+    return result.rows;
+  };
 }
 
 module.exports = UsersService;

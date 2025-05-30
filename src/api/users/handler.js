@@ -34,6 +34,19 @@ class UsersHandler {
       },
     };
   };
+
+  getUsersByUsernameHandler = async (request) => {
+    const { username = '' } = request.query;
+
+    const users = await this.#service.getUsersByUsername(username);
+
+    return {
+      status: 'success',
+      data: {
+        users,
+      },
+    };
+  };
 }
 
 module.exports = UsersHandler;
