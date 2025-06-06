@@ -6,11 +6,12 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class NotesService {
-  #pool; #collaborationsService;
+  #pool; #collaborationsService; #cacheService;
 
-  constructor(collaborationsService) {
+  constructor(collaborationsService, cacheService) {
     this.#pool = new Pool();
     this.#collaborationsService = collaborationsService;
+    this.#cacheService = cacheService;
   }
 
   addNote = async ({
@@ -31,19 +32,29 @@ class NotesService {
       throw new InvariantError('Catatan gagal ditambahkan');
     }
 
+    await this.#cacheService.delete(`notes:${owner}`);
     return result.rows[0].id;
   };
 
   getNotes = async (owner) => {
-    const query = {
-      text: `SELECT notes.* FROM notes
-      LEFT JOIN collaborations ON collaborations.note_id = notes.id
-      WHERE notes.owner = $1 OR collaborations.user_id = $1
-      GROUP BY notes.id`,
-      values: [owner],
-    };
-    const result = await this.#pool.query(query);
-    return result.rows.map(mapDBToModel);
+    try {
+      const result = await this.#cacheService.get(`notes:${owner}`);
+      return JSON.parse(result);
+    } catch (error) {
+      const query = {
+        text: `SELECT notes.* FROM notes
+        LEFT JOIN collaborations ON collaborations.note_id = notes.id
+        WHERE notes.owner = $1 OR collaborations.user_id = $1
+        GROUP BY notes.id`,
+        values: [owner],
+      };
+
+      const result = await this.#pool.query(query);
+      const mappedResult = result.rows.map(mapDBToModel);
+
+      await this.#cacheService.set(`notes:${owner}`, JSON.stringify(mappedResult));
+      return mappedResult;
+    }
   };
 
   getNoteById = async (id) => {
@@ -68,7 +79,7 @@ class NotesService {
     const updatedAt = new Date().toISOString();
 
     const query = {
-      text: 'UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id',
+      text: 'UPDATE notes SET title = $1, body = $2, tags = $3, updated_at = $4 WHERE id = $5 RETURNING id, owner',
       values: [title, body, tags, updatedAt, id],
     };
 
@@ -77,11 +88,14 @@ class NotesService {
     if (!result.rows.length) {
       throw new NotFoundError('Gagal memperbarui catatan. Id tidak ditemukan');
     }
+
+    const { owner } = result.rows[0];
+    await this.#cacheService.delete(`notes:${owner}`);
   };
 
   deleteNoteById = async (id) => {
     const query = {
-      text: 'DELETE FROM notes WHERE id = $1 RETURNING id',
+      text: 'DELETE FROM notes WHERE id = $1 RETURNING id, owner',
       values: [id],
     };
     const result = await this.#pool.query(query);
@@ -89,6 +103,9 @@ class NotesService {
     if (!result.rows.length) {
       throw new NotFoundError('Catatan gagal dihapus. Id tidak ditemukan');
     }
+
+    const { owner } = result.rows[0];
+    await this.#cacheService.delete(`notes:${owner}`);
   };
 
   verifyNoteOwner = async (id, owner) => {
